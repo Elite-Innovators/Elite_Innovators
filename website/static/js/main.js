@@ -16,18 +16,18 @@
 
 
   /* ════════════ 2. SUN-PATH ANIMATION ════════════ */
-  const liveSun   = document.getElementById('liveSun');
+  const liveSun = document.getElementById('liveSun');
   const liveShadow = document.getElementById('liveShadow');
-  const rvElev    = document.getElementById('rvElevation');
-  const rvShaded  = document.getElementById('rvShaded');
-  const rvYield   = document.getElementById('rvYield');
+  const rvElev = document.getElementById('rvElevation');
+  const rvShaded = document.getElementById('rvShaded');
+  const rvYield = document.getElementById('rvYield');
   const rvRevenue = document.getElementById('rvRevenue');
-  const sunLabel  = document.getElementById('sunTimeLabel');
+  const sunLabel = document.getElementById('sunTimeLabel');
 
   // Sun follows a quadratic bezier: start(20,205) control(230,10) end(440,205)
   // t goes 0→1 over a ~8 second cycle
   const SUN_ARC = {
-    x0: 20,  y0: 205,
+    x0: 20, y0: 205,
     cx: 230, cy: 10,
     x1: 440, y1: 205,
   };
@@ -44,25 +44,128 @@
   // Shadow polygon: cast from the left obstruction (top-right corner at 75,130)
   // onto the ground and roof, scaled by sun angle
   function shadowPoints(sunX, sunY) {
-    // obstruction top-right corner
-    const ox = 75, oy = 130, ground = 205;
-    const roofTop = 150, roofLeft = 140;
+    const ground = 205;
+    const roofLeft = 140, roofRight = 320, roofTop = 150;
 
-    // shadow direction: from sun toward obstruction
-    if (sunY >= ground - 2) return '75,205 75,205 75,205'; // sun at horizon
+    // Determine which obstruction casts the primary shadow over the roof
+    const isLeftObs = sunX < 230;
+
+    let ox, oy, obsBaseX;
+    if (isLeftObs) {
+      ox = 75; oy = 130; obsBaseX = 75;
+    } else {
+      ox = 395; oy = 110; obsBaseX = 395;
+    }
 
     const dx = ox - sunX;
     const dy = oy - sunY;
-    if (dy === 0) return '75,205 75,205 75,205';
 
-    // how far does the shadow stretch on the ground?
-    const scale = (ground - oy) / (oy - sunY);
-    const shadowTipX = ox + dx * scale * 0.3;
-    const clampedTip = Math.min(Math.max(shadowTipX, 75), 320);
+    // If sun is below the obstruction or on the wrong side, no visible shadow over the area
+    if (dy <= 0 || (isLeftObs && dx <= 0) || (!isLeftObs && dx >= 0)) {
+      return `${obsBaseX},${ground} ${obsBaseX},${ground} ${obsBaseX},${ground}`;
+    }
 
-    // shadow polygon: obstruction base → shadow tip on ground → partial roof overlap
-    const roofOverlap = Math.min(clampedTip, roofLeft + 120);
-    return `${ox},${ground} ${clampedTip},${ground} ${roofOverlap},${roofTop} ${roofLeft},${roofTop}`;
+    let pts = [`${obsBaseX},${ground}`];
+
+    if (isLeftObs) {
+      const tGround = (ground - oy) / dy;
+      const xGround = ox + dx * tGround;
+
+      if (xGround <= roofLeft) {
+        pts.push(`${xGround.toFixed(1)},${ground}`);
+      } else {
+        pts.push(`${roofLeft},${ground}`);
+        const tWall = (roofLeft - ox) / dx;
+        const yWall = oy + dy * tWall;
+
+        if (yWall >= roofTop && yWall <= ground) {
+          pts.push(`${roofLeft},${yWall.toFixed(1)}`);
+        } else {
+          pts.push(`${roofLeft},${roofTop}`);
+          const tRoof = (roofTop - oy) / dy;
+          const xRoof = ox + dx * tRoof;
+
+          if (xRoof <= roofRight) {
+            pts.push(`${xRoof.toFixed(1)},${roofTop}`);
+          } else {
+            pts.push(`${roofRight},${roofTop}`);
+            const tRightWall = (roofRight - ox) / dx;
+            const yRightWall = oy + dy * tRightWall;
+
+            if (yRightWall >= roofTop && yRightWall <= ground) {
+              pts.push(`${roofRight},${yRightWall.toFixed(1)}`);
+            } else {
+              pts.push(`${roofRight},${ground}`);
+              pts.push(`${Math.min(xGround, 460).toFixed(1)},${ground}`);
+            }
+          }
+        }
+      }
+    } else {
+      const tGround = (ground - oy) / dy;
+      const xGround = ox + dx * tGround;
+
+      if (xGround >= roofRight) {
+        pts.push(`${xGround.toFixed(1)},${ground}`);
+      } else {
+        pts.push(`${roofRight},${ground}`);
+        const tWall = (roofRight - ox) / dx;
+        const yWall = oy + dy * tWall;
+
+        if (yWall >= roofTop && yWall <= ground) {
+          pts.push(`${roofRight},${yWall.toFixed(1)}`);
+        } else {
+          pts.push(`${roofRight},${roofTop}`);
+          const tRoof = (roofTop - oy) / dy;
+          const xRoof = ox + dx * tRoof;
+
+          if (xRoof >= roofLeft) {
+            pts.push(`${xRoof.toFixed(1)},${roofTop}`);
+          } else {
+            pts.push(`${roofLeft},${roofTop}`);
+            const tLeftWall = (roofLeft - ox) / dx;
+            const yLeftWall = oy + dy * tLeftWall;
+
+            if (yLeftWall >= roofTop && yLeftWall <= ground) {
+              pts.push(`${roofLeft},${yLeftWall.toFixed(1)}`);
+            } else {
+              pts.push(`${roofLeft},${ground}`);
+              pts.push(`${Math.max(xGround, 0).toFixed(1)},${ground}`);
+            }
+          }
+        }
+      }
+    }
+
+    pts.push(`${ox},${oy}`);
+    return pts.join(' ');
+  }
+
+  function getShadedPercentage(sunX, sunY) {
+    const roofLeft = 140, roofRight = 320, roofTop = 150;
+    const roofWidth = roofRight - roofLeft;
+    const isLeftObs = sunX < 230;
+    const ox = isLeftObs ? 75 : 395;
+    const oy = isLeftObs ? 130 : 110;
+    const dx = ox - sunX;
+    const dy = oy - sunY;
+
+    if (dy <= 0 || (isLeftObs && dx <= 0) || (!isLeftObs && dx >= 0)) return 0;
+
+    const tRoof = (roofTop - oy) / dy;
+    const xRoof = ox + dx * tRoof;
+
+    let shadedWidth = 0;
+    if (isLeftObs) {
+      if (xRoof > roofLeft) {
+        shadedWidth = Math.min(xRoof, roofRight) - roofLeft;
+      }
+    } else {
+      if (xRoof < roofRight) {
+        shadedWidth = roofRight - Math.max(xRoof, roofLeft);
+      }
+    }
+    return Math.max(0, Math.min(100, (shadedWidth / roofWidth) * 100));
   }
 
   const CYCLE_DURATION = 8000; // ms for one full sun arc
@@ -87,21 +190,26 @@
 
     // data readouts
     const elevDeg = elevation.toFixed(0);
-    const shaded = Math.max(0, 55 - elevation * 0.9).toFixed(0);
-    const yieldNow = (elevation / 90 * 5.2).toFixed(1);
+    const exactShaded = getShadedPercentage(pos.x, pos.y);
+    const shadedStr = exactShaded.toFixed(0);
+
+    // adjust yield by sun elevation and unshaded area
+    const unshadedRatio = (100 - exactShaded) / 100;
+    const yieldNow = (Math.max(0, elevation / 90) * 5.2 * unshadedRatio).toFixed(1);
+
     const hour = Math.floor(6 + t * 12); // 6 AM to 6 PM
     const minute = Math.floor((6 + t * 12 - hour) * 60);
-    const revenue = Math.round(12000 + elevation / 90 * 38000);
+    const revenue = Math.round(12000 + (elevation / 90) * 38000 * unshadedRatio);
 
-    rvElev.textContent   = elevDeg + '°';
-    rvShaded.textContent = shaded + '%';
-    rvYield.textContent  = yieldNow + ' kWh/hr';
+    rvElev.textContent = elevDeg + '°';
+    rvShaded.textContent = shadedStr + '%';
+    rvYield.textContent = yieldNow + ' kWh/hr';
     rvRevenue.textContent = '₹' + revenue.toLocaleString('en-IN') + '/yr';
-    sunLabel.textContent  = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+    sunLabel.textContent = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
 
     // color classes
-    rvShaded.className  = 'rv' + (parseInt(shaded) > 30 ? '' : ' up');
-    rvYield.className   = 'rv' + (parseFloat(yieldNow) > 2 ? ' up' : '');
+    rvShaded.className = 'rv' + (parseInt(shadedStr) > 30 ? '' : ' up');
+    rvYield.className = 'rv' + (parseFloat(yieldNow) > 2 ? ' up' : '');
 
     requestAnimationFrame(tickSun);
   }
@@ -125,18 +233,18 @@
 
 
   /* ════════════ 4. SCAN MODAL ════════════ */
-  const backdrop     = document.getElementById('scanBackdrop');
-  const openScanBtn  = document.getElementById('openScanBtn');
+  const backdrop = document.getElementById('scanBackdrop');
+  const openScanBtn = document.getElementById('openScanBtn');
   const closeScanBtn = document.getElementById('closeScanBtn');
   const cancelScanBtn = document.getElementById('cancelScanBtn');
-  const runScanBtn   = document.getElementById('runScanBtn');
-  const scanStatus   = document.getElementById('scanStatus');
+  const runScanBtn = document.getElementById('runScanBtn');
+  const scanStatus = document.getElementById('scanStatus');
   const imageryFrame = document.getElementById('imageryFrame');
-  const zoomLayer    = document.getElementById('zoomLayer');
-  const scanImg      = document.getElementById('scanImg');
-  const overlaySvg   = document.getElementById('overlaySvg');
+  const zoomLayer = document.getElementById('zoomLayer');
+  const scanImg = document.getElementById('scanImg');
+  const overlaySvg = document.getElementById('overlaySvg');
   const imageryCaption = document.getElementById('imageryCaption');
-  const calcGrid     = document.getElementById('calcGrid');
+  const calcGrid = document.getElementById('calcGrid');
 
   function openModal() { backdrop.classList.add('open'); }
   function closeModal() { backdrop.classList.remove('open'); }
@@ -163,14 +271,14 @@
     e.preventDefault();
     const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
     const newScale = Math.max(1, Math.min(scale * zoomAmount, 5));
-    
+
     const rect = imageryFrame.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    
+
     panX = mx - (mx - panX) * (newScale / scale);
     panY = my - (my - panY) * (newScale / scale);
-    
+
     if (newScale === 1) { panX = 0; panY = 0; }
     scale = newScale; updateZoom();
   });
@@ -302,17 +410,17 @@
     calcGrid.classList.add('show');
 
     const rows = [
-      ['Usable roof area',       `${data.roof_area_m2} m²`],
-      ['Peak sun hours/day',     `${data.peak_sun_hours} hrs`],
-      ['Panel count (540W)',     `${data.panel_count} panels`],
-      ['System size',            `${data.system_kw} kWp`],
-      ['Shading loss',           `${data.shading_loss_pct}%`],
+      ['Usable roof area', `${data.roof_area_m2} m²`],
+      ['Peak sun hours/day', `${data.peak_sun_hours} hrs`],
+      ['Panel count (540W)', `${data.panel_count} panels`],
+      ['System size', `${data.system_kw} kWp`],
+      ['Shading loss', `${data.shading_loss_pct}%`],
       ['Estimated annual yield', `${data.annual_kwh.toLocaleString('en-IN')} kWh/yr`],
-      ['Gross system cost',      `₹${data.gross_cost.toLocaleString('en-IN')}`],
-      ['PM Surya Ghar subsidy',  `−₹${data.subsidy.toLocaleString('en-IN')}`, 'up'],
-      ['Net cost (you pay)',     `₹${data.net_cost.toLocaleString('en-IN')}`],
-      ['Annual savings',         `₹${data.annual_revenue.toLocaleString('en-IN')}/yr`, 'up'],
-      ['Payback period',         `${data.payback_years} years`, 'hero'],
+      ['Gross system cost', `₹${data.gross_cost.toLocaleString('en-IN')}`],
+      ['PM Surya Ghar subsidy', `−₹${data.subsidy.toLocaleString('en-IN')}`, 'up'],
+      ['Net cost (you pay)', `₹${data.net_cost.toLocaleString('en-IN')}`],
+      ['Annual savings', `₹${data.annual_revenue.toLocaleString('en-IN')}/yr`, 'up'],
+      ['Payback period', `${data.payback_years} years`, 'hero'],
     ];
 
     rows.forEach(([label, value, cls], i) => {
