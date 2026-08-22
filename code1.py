@@ -27,7 +27,7 @@ CHANGE LOG (fix for "Tile is entirely no-data."):
     found, all rejected by maxcc" -> loosen max_cloud).
 """
 
-from _future_ import annotations
+from __future__ import annotations
 
 import io
 import math
@@ -47,8 +47,8 @@ Image.MAX_IMAGE_PIXELS = None  # allow big renders
 # ---------------------------------------------------------------- config
 
 config = SHConfig()
-config.sh_client_id = os.getenv("CDSE_CLIENT_ID", "sh-ca0456db-a008-40ab-9ba3-2b076ff5280e")
-config.sh_client_secret = os.getenv("CDSE_CLIENT_SECRET", "gojPmtgvsFWKVEyDBxDtmxfFS5HrX0X7")
+config.sh_client_id = os.getenv("CDSE_CLIENT_ID", "")
+config.sh_client_secret = os.getenv("CDSE_CLIENT_SECRET", "")
 config.sh_base_url = "https://sh.dataspace.copernicus.eu"
 config.sh_auth_base_url = "https://identity.dataspace.copernicus.eu"
 config.sh_token_url = (
@@ -357,5 +357,5 @@ if __name__ == "__main__":
 
     # Esri World Imagery: ~0.3 m/px at zoom 19, ~0.15 m/px at zoom 20
     # This is genuinely sharp — real aerial/satellite detail, not interpolation
-    get_hires_tile(22.63052253505433, 88.45581778037847, size_m=640, zoom=19,
+    get_hires_tile(39.07357, 127.03822, size_m=640, zoom=19,
                    out="roof_tile.png")

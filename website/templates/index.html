@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarScan — Rooftop Solar Feasibility from Satellite Imagery</title>
+  <meta name="description" content="Enter coordinates, get a rooftop solar feasibility report in seconds. Aerial imagery, roof segmentation, shadow modelling, and PM Surya Ghar subsidy-adjusted payback — no site visit required.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<header>
+  <div class="brand">
+    <div class="stamp">☼</div>
+    SolarScan
+  </div>
+  <div class="top-meta">
+    <span>SIH 2026 · CLEAN TECH</span>
+    <span id="clockMeta">JSS NOIDA</span>
+  </div>
+</header>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<main>
+
+  <!-- ── intro ── -->
+  <div class="intro">
+    <div class="tag">ROOFTOP SOLAR FEASIBILITY</div>
+    <h1>Know your roof's payback<br>before you call a <em>vendor.</em></h1>
+    <p>Enter coordinates, we pull the aerial tile, trace the usable roof, and model the shadow your neighbours cast through the day — then price it out in seconds.</p>
+  </div>
+
+  <!-- ── CTA ── -->
+  <div class="cta-row">
+    <button class="btn" id="openScanBtn">Run a scan →</button>
+    <a href="#howItWorks" class="btn ghost">How it works ↓</a>
+  </div>
+
+  <!-- ── sun / shadow stage ── -->
+  <div class="stage">
+    <div class="stage-visual">
+      <div class="stage-label">
+        <span>LIVE MODEL — ROOF C-14</span>
+        <span id="sunTimeLabel">09:00</span>
+      </div>
+      <svg viewBox="0 0 460 240" preserveAspectRatio="xMidYMid meet">
+        <!-- sun arc guide -->
+        <path class="sun-path-guide" d="M20,205 Q230,10 440,205" />
+        <!-- ground -->
+        <line class="ground-line" x1="0" y1="205" x2="460" y2="205" />
+        <!-- obstructions (neighbours) -->
+        <rect class="obstruction" x="20" y="130" width="55" height="75" />
+        <rect class="obstruction" x="395" y="110" width="50" height="95" />
+        <!-- target roof -->
+        <rect class="roof-block" x="140" y="150" width="180" height="45" />
+        <!-- shadow cast -->
+        <polygon id="liveShadow" class="shadow-poly" points="75,205 190,205 165,150 140,150" />
+        <!-- sun -->
+        <circle id="liveSun" r="7" fill="var(--sun)" />
+      </svg>
+    </div>
+
+    <div class="stage-data">
+      <div class="readout">
+        <span class="rl">SUN ELEVATION</span>
+        <span class="rv" id="rvElevation">14°</span>
+      </div>
+      <div class="readout">
+        <span class="rl">ROOF SHADED</span>
+        <span class="rv" id="rvShaded">38%</span>
+      </div>
+      <div class="readout">
+        <span class="rl">EFFECTIVE YIELD RIGHT NOW</span>
+        <span class="rv" id="rvYield">3.1 kWh/hr</span>
+      </div>
+      <div class="readout">
+        <span class="rl">PROJECTED ANNUAL REVENUE</span>
+        <span class="rv flag" id="rvRevenue">₹41,200/yr</span>
+      </div>
+      <div class="stage-note">
+        Illustrative sun-path simulation — moves independently of scanned data to show how shading drives yield and revenue through the day.
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+<div class="log-section" id="howItWorks">
+  <div class="log-head">
+    <div class="tag">HOW IT WORKS</div>
+    <h2>Five steps. Address in,<br>report out.</h2>
+    <p>Logged in the order a real surveyor would work — imagery first, geometry last, nothing skipped.</p>
+  </div>
+
+  <!-- step 01 -->
+  <div class="log-row" data-row>
+    <div class="step">01</div>
+    <div class="body">
+      <h3>Address → imagery</h3>
+      <p>The address is geocoded and matched to the highest-resolution tile covering that parcel, then cropped to the property boundary.</p>
+      <span class="method-tag">GEOCODE + TILE FETCH</span>
+    </div>
+    <div class="visual">
+      <svg viewBox="0 0 200 130">
+        <circle cx="45" cy="65" r="4" fill="#E8621C"/>
+        <path d="M45,65 L120,65" stroke="#E8621C" stroke-width="1" stroke-dasharray="3 3"/>
+        <rect x="120" y="35" width="60" height="60" fill="none" stroke="#9AA3AC" stroke-width="1"/>
+        <rect x="135" y="50" width="30" height="30" fill="rgba(255,201,74,0.15)" stroke="#FFC94A" stroke-width="1"/>
+        <text x="45" y="90" fill="#9AA3AC" font-family="IBM Plex Mono" font-size="9" text-anchor="middle">28.59,77.37</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- step 02 -->
+  <div class="log-row" data-row>
+    <div class="step">02</div>
+    <div class="body">
+      <h3>Roof segmentation</h3>
+      <p>A segmentation model traces the usable roof polygon — separating it from overhangs, tanks, stairwell heads, and shared walls — and returns true usable area.</p>
+      <span class="method-tag">U-NET / SAM</span>
+    </div>
+    <div class="visual">
+      <svg viewBox="0 0 200 130">
+        <rect x="30" y="20" width="140" height="95" fill="#151F2B" stroke="#9AA3AC" stroke-width="1"/>
+        <polygon points="55,45 145,40 150,80 120,100 60,95" fill="rgba(232,98,28,0.12)" stroke="#E8621C" stroke-width="1.5"/>
+        <circle cx="55" cy="45" r="2.5" fill="#E8621C"/>
+        <circle cx="145" cy="40" r="2.5" fill="#E8621C"/>
+        <circle cx="150" cy="80" r="2.5" fill="#E8621C"/>
+        <circle cx="120" cy="100" r="2.5" fill="#E8621C"/>
+        <circle cx="60" cy="95" r="2.5" fill="#E8621C"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- step 03 -->
+  <div class="log-row" data-row>
+    <div class="step">03</div>
+    <div class="body">
+      <h3>Shadow &amp; sun-path modelling</h3>
+      <p>Neighbouring building heights are estimated and projected against the sun's path through the year, producing an hour-by-hour shading map over the roof.</p>
+      <span class="method-tag">SUN-PATH GEOMETRY</span>
+    </div>
+    <div class="visual">
+      <svg viewBox="0 0 200 130">
+        <path d="M15,105 Q100,15 185,105" stroke="#9AA3AC" stroke-width="1" fill="none" stroke-dasharray="2 4"/>
+        <line x1="10" y1="105" x2="190" y2="105" stroke="#9AA3AC" stroke-width="1"/>
+        <rect x="20" y="65" width="30" height="40" fill="none" stroke="#9AA3AC" stroke-width="1"/>
+        <rect x="90" y="90" width="70" height="15" fill="rgba(255,201,74,0.1)" stroke="#FFC94A" stroke-width="1"/>
+        <polygon points="55,105 100,105 90,90 65,90" fill="rgba(14,22,32,0.6)"/>
+        <circle cx="140" cy="35" r="6" fill="#FFC94A"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- step 04 -->
+  <div class="log-row" data-row>
+    <div class="step">04</div>
+    <div class="body">
+      <h3>Energy &amp; financial modelling</h3>
+      <p>Usable area and shading combine with irradiance data to estimate kWh/year, optimal panel count, subsidy-adjusted system cost under PM Surya Ghar, and payback period.</p>
+      <span class="method-tag">PVLIB IRRADIANCE MODEL</span>
+    </div>
+    <div class="visual">
+      <svg viewBox="0 0 200 130">
+        <line x1="25" y1="105" x2="175" y2="105" stroke="#9AA3AC" stroke-width="1"/>
+        <line x1="25" y1="25" x2="25" y2="105" stroke="#9AA3AC" stroke-width="1"/>
+        <!-- bar chart -->
+        <rect x="40" y="70" width="16" height="35" fill="rgba(255,201,74,0.3)" stroke="#FFC94A" stroke-width="0.8"/>
+        <rect x="62" y="50" width="16" height="55" fill="rgba(255,201,74,0.3)" stroke="#FFC94A" stroke-width="0.8"/>
+        <rect x="84" y="35" width="16" height="70" fill="rgba(255,201,74,0.5)" stroke="#FFC94A" stroke-width="0.8"/>
+        <rect x="106" y="42" width="16" height="63" fill="rgba(255,201,74,0.3)" stroke="#FFC94A" stroke-width="0.8"/>
+        <rect x="128" y="60" width="16" height="45" fill="rgba(255,201,74,0.3)" stroke="#FFC94A" stroke-width="0.8"/>
+        <rect x="150" y="75" width="16" height="30" fill="rgba(255,201,74,0.2)" stroke="#FFC94A" stroke-width="0.8"/>
+        <text x="100" y="122" fill="#9AA3AC" font-family="IBM Plex Mono" font-size="8" text-anchor="middle">kWh / month</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- step 05 -->
+  <div class="log-row" data-row>
+    <div class="step">05</div>
+    <div class="body">
+      <h3>Vendor-ready report</h3>
+      <p>Every number is compiled into a single output — roof diagram, shading summary, system size, cost breakdown — formatted so a solar vendor can quote directly from it.</p>
+      <span class="method-tag">ONE-PAGE REPORT</span>
+    </div>
+    <div class="visual">
+      <svg viewBox="0 0 200 130">
+        <rect x="50" y="10" width="100" height="115" fill="#151F2B" stroke="#9AA3AC" stroke-width="1" rx="2"/>
+        <line x1="62" y1="30" x2="138" y2="30" stroke="#E8621C" stroke-width="1"/>
+        <line x1="62" y1="45" x2="130" y2="45" stroke="#9AA3AC" stroke-width="0.5" stroke-dasharray="1 2"/>
+        <line x1="62" y1="55" x2="125" y2="55" stroke="#9AA3AC" stroke-width="0.5" stroke-dasharray="1 2"/>
+        <line x1="62" y1="65" x2="135" y2="65" stroke="#9AA3AC" stroke-width="0.5" stroke-dasharray="1 2"/>
+        <line x1="62" y1="75" x2="120" y2="75" stroke="#9AA3AC" stroke-width="0.5" stroke-dasharray="1 2"/>
+        <rect x="62" y="85" width="76" height="18" fill="rgba(79,180,119,0.15)" stroke="#4FB477" stroke-width="0.8" rx="1"/>
+        <text x="100" y="97" fill="#4FB477" font-family="IBM Plex Mono" font-size="7" text-anchor="middle">VENDOR READY</text>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ SCAN MODAL ═══════════════ -->
+<div class="modal-backdrop" id="scanBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Run a scan</h3>
+      <button class="modal-close" id="closeScanBtn">ESC / CLOSE</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="field-row">
+        <div class="field">
+          <label for="inputLat">Latitude</label>
+          <input type="text" id="inputLat" value="28.5921" placeholder="e.g. 28.5921">
+        </div>
+        <div class="field">
+          <label for="inputLon">Longitude</label>
+          <input type="text" id="inputLon" value="77.3736" placeholder="e.g. 77.3736">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" id="runScanBtn">Fetch &amp; analyse →</button>
+        <button class="btn ghost" id="cancelScanBtn">Cancel</button>
+      </div>
+
+      <div class="scan-status" id="scanStatus"></div>
+
+      <!-- imagery result -->
+      <div class="imagery-frame" id="imageryFrame">
+        <img id="scanImg" alt="Aerial tile">
+        <svg id="overlaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="imagery-caption" id="imageryCaption"></div>
+      </div>
+
+      <!-- calculation results -->
+      <div class="calc-grid" id="calcGrid"></div>
+
+      <div class="modal-note">
+        Roof area is estimated from tile coverage (35% utilisation assumption). Real segmentation model replaces this heuristic. Solar constants: 540W panels, PM Surya Ghar 2024-26 subsidy slabs, ₹7.5/kWh domestic tariff.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer>
+  SOLARSCAN — SIH 2026 · JSS NOIDA · PM SURYA GHAR · ROOFTOP SOLAR SCHEME
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
