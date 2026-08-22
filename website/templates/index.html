@@ -213,6 +213,24 @@
     </div>
     <div class="modal-body">
 
+      <!-- location search -->
+      <div class="search-wrapper" id="searchWrapper">
+        <label for="searchInput">Search any location worldwide</label>
+        <div class="search-input-row">
+          <input type="text" id="searchInput" placeholder="e.g. Taj Mahal, India or 1600 Pennsylvania Ave" autocomplete="off">
+          <span class="search-icon">🌍</span>
+          <div class="search-loading" id="searchLoading">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+        <div class="search-hint">
+          Search by address, landmark, or city — <kbd>↑</kbd> <kbd>↓</kbd> to navigate · <kbd>Enter</kbd> to select
+        </div>
+      </div>
+
+      <div class="field-divider">or enter coordinates</div>
+
       <div class="field-row">
         <div class="field">
           <label for="inputLat">Latitude</label>
@@ -237,8 +255,32 @@
           <img id="scanImg" alt="Aerial tile">
           <svg id="overlaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
+
+        <!-- drawing toolbar -->
+        <div class="draw-toolbar" id="drawToolbar">
+          <button class="draw-btn" id="drawModeBtn" title="Draw polygon manually">
+            <span class="draw-btn-icon">✏️</span> Draw
+          </button>
+          <button class="draw-btn ai" id="aiDetectBtn" title="AI auto-detect roof outline">
+            <span class="draw-btn-icon">🤖</span> AI Detect
+          </button>
+          <div class="draw-btn-sep"></div>
+          <button class="draw-btn" id="undoVertexBtn" title="Undo last vertex" disabled>
+            <span class="draw-btn-icon">↩</span> Undo
+          </button>
+          <button class="draw-btn" id="clearDrawBtn" title="Clear polygon" disabled>
+            <span class="draw-btn-icon">✕</span> Clear
+          </button>
+          <button class="draw-btn done" id="completePolyBtn" title="Complete polygon" disabled>
+            <span class="draw-btn-icon">✓</span> Done
+          </button>
+        </div>
+
+        <!-- area badge -->
+        <div class="draw-area-badge" id="areaBadge"></div>
+
         <div class="imagery-caption" id="imageryCaption"></div>
-        <div class="zoom-hint">Scroll to zoom · Click & drag to pan</div>
+        <div class="zoom-hint" id="zoomHint">Scroll to zoom · Click & drag to pan</div>
       </div>
 
       <!-- calculation results -->

@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SolarScan — Rooftop Solar Feasibility</title>
+  <title>SolarScan — Rooftop Solar Feasibility Assessment</title>
+  <meta name="description" content="Calculate your rooftop solar feasibility, payback period, and PM Surya Ghar subsidy estimate using AI and aerial imagery without a site visit.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
@@ -716,7 +717,103 @@
       letter-spacing: 0.05em;
       color: var(--sun);
       border: 1px solid rgba(255, 201, 74, 0.35);
-      padding: 5px 11px;
+      padding:5px 11px;
+    }
+
+    /* ---------- LOCATION SEARCH ---------- */
+    .search-wrapper { position:relative; margin-bottom:18px; }
+    .search-wrapper label {
+      font-family:'IBM Plex Mono'; font-size:10px;
+      letter-spacing:0.05em; color:var(--paper-dim); text-transform:uppercase;
+      display:block; margin-bottom:6px;
+    }
+    .search-input-row { position:relative; display:flex; align-items:center; }
+    .search-input-row .search-icon {
+      position:absolute; left:12px; top:50%; transform:translateY(-50%);
+      color:var(--paper-dim); font-size:15px; pointer-events:none;
+      transition:color 0.2s ease;
+    }
+    .search-input-row input {
+      font-family:'IBM Plex Mono'; font-size:13px;
+      padding:12px 14px 12px 36px;
+      border:1px solid var(--line-strong); border-radius:8px;
+      background:var(--ink); color:var(--paper); width:100%;
+      transition:border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .search-input-row input:focus {
+      outline:none; border-color:var(--flag);
+      box-shadow:0 0 0 3px rgba(232,98,28,0.15);
+    }
+    .search-input-row input:focus ~ .search-icon { color:var(--flag); }
+    .search-input-row input::placeholder { color:var(--paper-dim); opacity:0.6; }
+    .search-results {
+      position:absolute; top:100%; left:0; right:0; margin-top:4px;
+      background:var(--ink-2); border:1px solid var(--line-strong);
+      border-radius:8px; max-height:280px; overflow-y:auto;
+      z-index:50; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:none;
+    }
+    .search-results.open { display:block; }
+    .search-result-item {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:11px 14px; cursor:pointer;
+      border-bottom:1px solid var(--line); transition:background 0.15s ease;
+    }
+    .search-result-item:last-child { border-bottom:none; }
+    .search-result-item:hover, .search-result-item.active { background:rgba(232,98,28,0.08); }
+    .search-result-item .result-pin {
+      flex-shrink:0; width:20px; height:20px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; color:var(--flag); margin-top:1px;
+    }
+    .search-result-item .result-text { flex:1; min-width:0; }
+    .search-result-item .result-name {
+      font-size:13px; color:var(--paper); line-height:1.35;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .search-result-item .result-detail {
+      font-family:'IBM Plex Mono'; font-size:10px;
+      color:var(--paper-dim); margin-top:2px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .search-result-item .result-type {
+      flex-shrink:0; font-family:'IBM Plex Mono'; font-size:9px;
+      letter-spacing:0.04em; text-transform:uppercase;
+      color:var(--sun); opacity:0.7;
+      background:rgba(255,201,74,0.08); border:1px solid rgba(255,201,74,0.18);
+      border-radius:3px; padding:2px 6px; margin-top:2px;
+    }
+    .search-hint {
+      font-family:'IBM Plex Mono'; font-size:10px;
+      color:var(--paper-dim); opacity:0.6;
+      margin-top:6px; display:flex; align-items:center; gap:6px;
+    }
+    .search-hint kbd {
+      display:inline-block; background:rgba(232,227,214,0.08);
+      border:1px solid var(--line-strong); border-radius:3px;
+      padding:1px 5px; font-family:'IBM Plex Mono'; font-size:9px;
+      color:var(--paper-dim);
+    }
+    .search-loading {
+      display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    }
+    .search-loading.active { display:block; }
+    .search-loading .dot {
+      display:inline-block; width:6px; height:6px; border-radius:50%;
+      background:var(--flag); animation:search-pulse 1.2s ease-in-out infinite;
+    }
+    .search-loading .dot:nth-child(2) { animation-delay:0.2s; }
+    .search-loading .dot:nth-child(3) { animation-delay:0.4s; }
+    @keyframes search-pulse {
+      0%, 80%, 100% { opacity:0.2; transform:scale(0.8); }
+      40% { opacity:1; transform:scale(1.1); }
+    }
+    .field-divider {
+      display:flex; align-items:center; gap:12px; margin-bottom:14px;
+      font-family:'IBM Plex Mono'; font-size:10px;
+      color:var(--paper-dim); letter-spacing:0.06em; text-transform:uppercase;
+    }
+    .field-divider::before, .field-divider::after {
+      content:''; flex:1; height:1px; background:var(--line-strong);
     }
   </style>
 </head>
@@ -914,6 +1011,25 @@
         <button class="modal-close" id="closeScanBtn">CLOSE ✕</button>
       </div>
       <div class="modal-body">
+
+        <!-- location search -->
+        <div class="search-wrapper" id="searchWrapper">
+          <label for="searchInput">Search any location worldwide</label>
+          <div class="search-input-row">
+            <input type="text" id="searchInput" placeholder="e.g. Taj Mahal, India or 1600 Pennsylvania Ave" autocomplete="off">
+            <span class="search-icon">🌍</span>
+            <div class="search-loading" id="searchLoading">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+          </div>
+          <div class="search-results" id="searchResults"></div>
+          <div class="search-hint">
+            Search by address, landmark, or city — <kbd>↑</kbd> <kbd>↓</kbd> to navigate · <kbd>Enter</kbd> to select
+          </div>
+        </div>
+
+        <div class="field-divider">or enter coordinates</div>
+
         <div class="field-row">
           <div class="field">
             <label for="scanLat">Latitude</label>
@@ -949,7 +1065,115 @@
 
   <script>
     // ---- point this at your deployed Flask API from app.py ----
-    const API_BASE = "http://localhost:8000";
+    const API_BASE = "http://localhost:5000";
+
+    /* ============ LOCATION SEARCH (GEOCODING) ============ */
+    const searchInput2    = document.getElementById('searchInput');
+    const searchResults2  = document.getElementById('searchResults');
+    const searchLoading2  = document.getElementById('searchLoading');
+    const scanLatInput    = document.getElementById('scanLat');
+    const scanLonInput    = document.getElementById('scanLon');
+    const clockMeta2      = document.getElementById('clockMeta');
+
+    let searchTimer = null, activeIdx2 = -1, results2 = [];
+
+    searchInput2.addEventListener('input', () => {
+      const q = searchInput2.value.trim();
+      clearTimeout(searchTimer);
+      activeIdx2 = -1;
+      if (q.length < 2) {
+        searchResults2.classList.remove('open');
+        searchResults2.innerHTML = '';
+        searchLoading2.classList.remove('active');
+        return;
+      }
+      searchLoading2.classList.add('active');
+      searchTimer = setTimeout(async () => {
+        try {
+          // Use Nominatim directly for the static showcase (no Flask proxy)
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6`, {
+            headers: { 'Accept': 'application/json' }
+          });
+          const data = await res.json();
+          results2 = data.map(r => ({
+            display_name: r.display_name,
+            lat: parseFloat(r.lat),
+            lon: parseFloat(r.lon),
+            type: r.type || ''
+          }));
+          renderResults2(results2);
+        } catch (err) {
+          searchResults2.innerHTML = '<div class="search-result-item"><span class="result-text"><span class="result-name" style="color:var(--flag)">Search failed</span></span></div>';
+          searchResults2.classList.add('open');
+        } finally {
+          searchLoading2.classList.remove('active');
+        }
+      }, 300);
+    });
+
+    function renderResults2(results) {
+      searchResults2.innerHTML = '';
+      if (!results.length) {
+        searchResults2.innerHTML = '<div class="search-result-item"><span class="result-text"><span class="result-name" style="color:var(--paper-dim)">No locations found</span></span></div>';
+        searchResults2.classList.add('open');
+        return;
+      }
+      results.forEach((r, i) => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        const parts = r.display_name.split(', ');
+        const primary = parts.slice(0, 2).join(', ');
+        const secondary = parts.slice(2).join(', ');
+        item.innerHTML = `
+          <span class="result-pin">📍</span>
+          <span class="result-text">
+            <span class="result-name">${primary}</span>
+            <span class="result-detail">${secondary || r.display_name}</span>
+          </span>
+          ${r.type ? `<span class="result-type">${r.type}</span>` : ''}
+        `;
+        item.addEventListener('click', () => selectResult2(i));
+        item.addEventListener('mouseenter', () => { activeIdx2 = i; highlightResult2(); });
+        searchResults2.appendChild(item);
+      });
+      searchResults2.classList.add('open');
+    }
+
+    function selectResult2(index) {
+      const r = results2[index];
+      if (!r) return;
+      scanLatInput.value = r.lat.toFixed(6);
+      scanLonInput.value = r.lon.toFixed(6);
+      searchInput2.value = r.display_name;
+      searchResults2.classList.remove('open');
+      if (clockMeta2) {
+        clockMeta2.textContent = `${r.lat.toFixed(4)}°${r.lat >= 0 ? 'N' : 'S'}, ${Math.abs(r.lon).toFixed(4)}°${r.lon >= 0 ? 'E' : 'W'}`;
+      }
+      [scanLatInput, scanLonInput].forEach(inp => {
+        inp.style.borderColor = '#4FB477';
+        inp.style.boxShadow = '0 0 0 3px rgba(79,180,119,0.2)';
+        setTimeout(() => { inp.style.borderColor = ''; inp.style.boxShadow = ''; }, 1200);
+      });
+    }
+
+    function highlightResult2() {
+      const items = searchResults2.querySelectorAll('.search-result-item');
+      items.forEach((item, i) => item.classList.toggle('active', i === activeIdx2));
+      if (items[activeIdx2]) items[activeIdx2].scrollIntoView({ block: 'nearest' });
+    }
+
+    searchInput2.addEventListener('keydown', (e) => {
+      const items = searchResults2.querySelectorAll('.search-result-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx2 = Math.min(activeIdx2 + 1, items.length - 1); highlightResult2(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx2 = Math.max(activeIdx2 - 1, 0); highlightResult2(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx2 >= 0) selectResult2(activeIdx2); }
+      else if (e.key === 'Escape') { searchResults2.classList.remove('open'); }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-wrapper')) searchResults2.classList.remove('open');
+    });
 
     /* ============ 4. LIVE SUN / SHADOW / COST ANIMATION ============ */
     const sunEl = document.getElementById('liveSun');

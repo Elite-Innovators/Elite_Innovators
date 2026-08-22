@@ -416,3 +416,313 @@ footer {
   vertical-align:middle; margin-right:8px;
 }
 @keyframes spin { to { transform:rotate(360deg); } }
+
+
+/* ══════════════ 9. LOCATION SEARCH ══════════════ */
+.search-wrapper {
+  position:relative;
+  margin-bottom:18px;
+}
+.search-wrapper label {
+  font-family:'IBM Plex Mono', monospace; font-size:10px;
+  letter-spacing:0.05em; color:var(--paper-dim); text-transform:uppercase;
+  display:block; margin-bottom:6px;
+}
+.search-input-row {
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+.search-input-row .search-icon {
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  color:var(--paper-dim); font-size:15px; pointer-events:none;
+  transition:color 0.2s ease;
+}
+.search-input-row input {
+  font-family:'IBM Plex Mono', monospace; font-size:13px;
+  padding:12px 14px 12px 36px;
+  border:1px solid var(--line-strong);
+  border-radius:8px;
+  background:var(--ink); color:var(--paper);
+  width:100%;
+  transition:border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.search-input-row input:focus {
+  outline:none;
+  border-color:var(--flag);
+  box-shadow:0 0 0 3px rgba(232,98,28,0.15);
+}
+.search-input-row input:focus ~ .search-icon {
+  color:var(--flag);
+}
+.search-input-row input::placeholder {
+  color:var(--paper-dim); opacity:0.6;
+}
+
+/* autocomplete dropdown */
+.search-results {
+  position:absolute;
+  top:100%; left:0; right:0;
+  margin-top:4px;
+  background:var(--ink-2);
+  border:1px solid var(--line-strong);
+  border-radius:8px;
+  max-height:280px; overflow-y:auto;
+  z-index:50;
+  box-shadow:0 12px 40px rgba(0,0,0,0.45);
+  display:none;
+}
+.search-results.open { display:block; }
+
+.search-result-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:11px 14px;
+  cursor:pointer;
+  border-bottom:1px solid var(--line);
+  transition:background 0.15s ease;
+}
+.search-result-item:last-child { border-bottom:none; }
+.search-result-item:hover,
+.search-result-item.active {
+  background:rgba(232,98,28,0.08);
+}
+.search-result-item .result-pin {
+  flex-shrink:0;
+  width:20px; height:20px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:var(--flag);
+  margin-top:1px;
+}
+.search-result-item .result-text {
+  flex:1; min-width:0;
+}
+.search-result-item .result-name {
+  font-size:13px; color:var(--paper);
+  line-height:1.35;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.search-result-item .result-detail {
+  font-family:'IBM Plex Mono', monospace; font-size:10px;
+  color:var(--paper-dim); margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.search-result-item .result-type {
+  flex-shrink:0;
+  font-family:'IBM Plex Mono', monospace; font-size:9px;
+  letter-spacing:0.04em; text-transform:uppercase;
+  color:var(--sun); opacity:0.7;
+  background:rgba(255,201,74,0.08);
+  border:1px solid rgba(255,201,74,0.18);
+  border-radius:3px;
+  padding:2px 6px;
+  margin-top:2px;
+}
+
+.search-hint {
+  font-family:'IBM Plex Mono', monospace; font-size:10px;
+  color:var(--paper-dim); opacity:0.6;
+  margin-top:6px; display:flex; align-items:center; gap:6px;
+}
+.search-hint kbd {
+  display:inline-block;
+  background:rgba(232,227,214,0.08);
+  border:1px solid var(--line-strong);
+  border-radius:3px;
+  padding:1px 5px;
+  font-family:'IBM Plex Mono', monospace; font-size:9px;
+  color:var(--paper-dim);
+}
+
+/* search loading indicator */
+.search-loading {
+  display:none;
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+}
+.search-loading.active { display:block; }
+.search-loading .dot {
+  display:inline-block; width:6px; height:6px;
+  border-radius:50%; background:var(--flag);
+  animation:search-pulse 1.2s ease-in-out infinite;
+}
+.search-loading .dot:nth-child(2) { animation-delay:0.2s; }
+.search-loading .dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes search-pulse {
+  0%, 80%, 100% { opacity:0.2; transform:scale(0.8); }
+  40% { opacity:1; transform:scale(1.1); }
+}
+
+/* divider between search and lat/lon fields */
+.field-divider {
+  display:flex; align-items:center; gap:12px;
+  margin-bottom:14px;
+  font-family:'IBM Plex Mono', monospace; font-size:10px;
+  color:var(--paper-dim); letter-spacing:0.06em;
+  text-transform:uppercase;
+}
+.field-divider::before, .field-divider::after {
+  content:''; flex:1; height:1px;
+  background:var(--line-strong);
+}
+
+
+/* ══════════════ 10. POLYGON DRAWING TOOL ══════════════ */
+
+/* toolbar */
+.draw-toolbar {
+  position:absolute; top:8px; left:8px; right:auto;
+  display:flex; align-items:center; gap:4px;
+  background:rgba(14,22,32,0.85);
+  backdrop-filter:blur(8px);
+  border:1px solid var(--line-strong);
+  border-radius:8px;
+  padding:4px 6px;
+  z-index:15;
+}
+.draw-btn {
+  font-family:'IBM Plex Mono', monospace; font-size:11px;
+  padding:6px 10px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent; color:var(--paper-dim);
+  cursor:pointer; white-space:nowrap;
+  display:flex; align-items:center; gap:4px;
+  transition:all 0.15s ease;
+}
+.draw-btn:hover:not(:disabled) {
+  background:rgba(232,227,214,0.08);
+  color:var(--paper);
+}
+.draw-btn:disabled {
+  opacity:0.3; cursor:not-allowed;
+}
+.draw-btn.active {
+  background:var(--flag);
+  color:var(--ink);
+  border-color:var(--flag);
+}
+.draw-btn.ai {
+  color:var(--sun);
+}
+.draw-btn.ai:hover:not(:disabled) {
+  background:rgba(255,201,74,0.12);
+  color:var(--sun);
+}
+.draw-btn.ai.loading {
+  pointer-events:none;
+  animation:pulse-ai 1s ease infinite;
+}
+@keyframes pulse-ai {
+  0%, 100% { opacity:1; }
+  50% { opacity:0.5; }
+}
+.draw-btn.done {
+  color:var(--good);
+}
+.draw-btn.done:hover:not(:disabled) {
+  background:rgba(79,180,119,0.12);
+}
+.draw-btn-icon {
+  font-size:13px; line-height:1;
+}
+.draw-btn-sep {
+  width:1px; height:20px;
+  background:var(--line-strong);
+  margin:0 2px;
+}
+
+/* area badge */
+.draw-area-badge {
+  position:absolute; bottom:52px; right:8px;
+  font-family:'IBM Plex Mono', monospace; font-size:12px;
+  font-weight:600;
+  color:var(--sun);
+  background:rgba(14,22,32,0.85);
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(255,201,74,0.3);
+  border-radius:6px;
+  padding:6px 12px;
+  z-index:15;
+  display:none;
+  animation:badge-in 0.3s ease;
+}
+.draw-area-badge.show { display:block; }
+@keyframes badge-in {
+  from { opacity:0; transform:translateY(4px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* drawing mode cursor override */
+.imagery-frame.draw-mode { cursor:crosshair !important; }
+.imagery-frame.draw-mode:active { cursor:crosshair !important; }
+.imagery-frame.draw-mode .zoom-hint { display:none; }
+
+/* SVG drawing elements */
+.draw-polygon-line {
+  fill:none;
+  stroke:var(--flag);
+  stroke-width:2;
+  stroke-dasharray:6 3;
+  pointer-events:none;
+}
+.draw-polygon-fill {
+  fill:rgba(232,98,28,0.12);
+  stroke:var(--flag);
+  stroke-width:2.5;
+  pointer-events:none;
+}
+.draw-polygon-fill.completed {
+  fill:rgba(232,98,28,0.18);
+  stroke-dasharray:none;
+  animation:poly-glow 2s ease infinite alternate;
+}
+@keyframes poly-glow {
+  from { fill:rgba(232,98,28,0.12); }
+  to { fill:rgba(232,98,28,0.22); }
+}
+.draw-vertex {
+  fill:var(--flag);
+  stroke:#fff;
+  stroke-width:2;
+  cursor:grab;
+  filter:drop-shadow(0 0 4px rgba(232,98,28,0.6));
+  transition:r 0.15s ease;
+}
+.draw-vertex:hover {
+  r:8 !important;
+}
+.draw-vertex.first-vertex {
+  fill:var(--good);
+  stroke:#fff;
+  filter:drop-shadow(0 0 6px rgba(79,180,119,0.7));
+  cursor:pointer;
+}
+.draw-guide-line {
+  stroke:var(--flag);
+  stroke-width:1.5;
+  stroke-dasharray:4 4;
+  opacity:0.6;
+  pointer-events:none;
+}
+.draw-close-hint {
+  fill:var(--good);
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  pointer-events:none;
+}
+
+/* AI detect result polygon */
+.ai-polygon {
+  fill:rgba(255,201,74,0.15);
+  stroke:var(--sun);
+  stroke-width:2.5;
+  stroke-dasharray:1000;
+  stroke-dashoffset:1000;
+  animation:draw-outline 2s cubic-bezier(.3,.8,.3,1) forwards;
+}
+.ai-vertex {
+  fill:var(--sun);
+  stroke:#fff;
+  stroke-width:1.5;
+  opacity:0;
+  animation:vertexpop 0.3s ease forwards;
+}

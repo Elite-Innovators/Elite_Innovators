@@ -3,6 +3,7 @@ SolarScan — Flask backend.
 
 Endpoints:
   GET  /            → serves the showcase page
+  GET  /api/geocode → geocode an address to lat/lon (proxies Nominatim)
   POST /api/scan    → fetches aerial tile + runs solar feasibility calc
 """
 
@@ -35,8 +36,68 @@ app = Flask(__name__,
 def index():
     return render_template("index.html", year=datetime.now().year)
 
+@app.route("/robots.txt")
+def robots():
+    return "User-agent: *\nAllow: /\nSitemap: /sitemap.xml", 200, {'Content-Type': 'text/plain'}
+
+@app.route("/sitemap.xml")
+def sitemap():
+    xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://solarscan.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>'''
+    return xml, 200, {'Content-Type': 'application/xml'}
 
 # ═══════════════════════════════════════════════ API
+
+@app.route("/api/geocode")
+def api_geocode():
+    """Geocode an address using OpenStreetMap Nominatim.
+
+    Query params:
+      q  — search string (e.g. "Taj Mahal, India" or "1600 Pennsylvania Ave")
+
+    Returns JSON array of results:
+      [{ display_name, lat, lon, boundingbox, type }]
+    """
+    import requests as req
+
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    try:
+        resp = req.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "q": q,
+                "format": "json",
+                "addressdetails": 1,
+                "limit": 6,
+            },
+            headers={"User-Agent": "SolarScan/1.0 (hackathon project)"},
+            timeout=8,
+        )
+        resp.raise_for_status()
+        results = resp.json()
+    except Exception as exc:
+        return jsonify({"error": f"Geocoding failed: {exc}"}), 502
+
+    out = []
+    for r in results:
+        out.append({
+            "display_name": r.get("display_name", ""),
+            "lat": float(r.get("lat", 0)),
+            "lon": float(r.get("lon", 0)),
+            "boundingbox": r.get("boundingbox", []),
+            "type": r.get("type", ""),
+        })
+
+    return jsonify(out)
 
 @app.route("/api/scan", methods=["POST"])
 def api_scan():
@@ -103,6 +164,159 @@ def api_scan():
         "width": w,
         "height": h,
         **calc,
+    })
+
+
+@app.route("/api/detect-roof", methods=["POST"])
+def api_detect_roof():
+    """Auto-detect building/roof outline from a satellite tile image.
+
+    Expects JSON body:
+      { "image_b64": str (base64 PNG data-url or raw),
+        "mpp": float (meters per pixel) }
+
+    Returns JSON:
+      { "polygon": [[x,y], ...],
+        "area_m2": float,
+        "contour_count": int }
+    """
+    import cv2
+    import numpy as np
+
+    data = request.get_json(force=True)
+    img_b64 = data.get("image_b64", "")
+    mpp = float(data.get("mpp", 0.3))
+
+    # Strip data-url prefix if present
+    if "," in img_b64:
+        img_b64 = img_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(img_b64)
+        nparr = np.frombuffer(img_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception as exc:
+        return jsonify({"error": f"Failed to decode image: {exc}"}), 400
+
+    if img is None:
+        return jsonify({"error": "Could not decode image"}), 400
+
+    h, w = img.shape[:2]
+    cx, cy = w // 2, h // 2
+
+    # ── preprocessing ──
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # CLAHE for contrast enhancement (helps with varied lighting)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+
+    # Bilateral filter to reduce noise while keeping edges
+    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+
+    # ── edge detection ──
+    # Adaptive threshold to handle varying brightness across the tile
+    thresh = cv2.adaptiveThreshold(
+        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV, 21, 4
+    )
+
+    # Morphological close to connect nearby edges into solid regions
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
+
+    # Fill small holes
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_DILATE, kernel_small, iterations=1)
+
+    # Also try Canny for cleaner edges
+    edges = cv2.Canny(gray, 30, 120)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    # Combine both approaches
+    combined = cv2.bitwise_or(thresh, edges)
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    mask_polygon = data.get("mask_polygon")
+    if mask_polygon and len(mask_polygon) >= 3:
+        try:
+            mask = np.zeros(gray.shape, dtype=np.uint8)
+            pts = np.array(mask_polygon, dtype=np.int32)
+            cv2.fillPoly(mask, [pts], 255)
+            combined = cv2.bitwise_and(combined, mask)
+        except Exception:
+            pass
+
+    # ── contour detection ──
+    contours, _ = cv2.findContours(
+        combined, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    if not contours:
+        return jsonify({
+            "polygon": [],
+            "area_m2": 0,
+            "contour_count": 0,
+            "message": "No building contours detected"
+        })
+
+    # ── select best contour ──
+    # Score each contour by: size (bigger = better) + proximity to center
+    min_area = (w * h) * 0.005   # at least 0.5% of image
+    max_area = (w * h) * 0.85    # no more than 85% of image
+    candidates = []
+
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < min_area or area > max_area:
+            continue
+
+        # Centroid distance from image center
+        M = cv2.moments(cnt)
+        if M["m00"] == 0:
+            continue
+        cnt_cx = int(M["m10"] / M["m00"])
+        cnt_cy = int(M["m01"] / M["m00"])
+        dist = math.sqrt((cnt_cx - cx) ** 2 + (cnt_cy - cy) ** 2)
+
+        # Prefer large contours close to center
+        # Normalize: distance penalty relative to image diagonal
+        diag = math.sqrt(w ** 2 + h ** 2)
+        score = area / (1 + (dist / diag) * 3)
+
+        candidates.append((score, cnt))
+
+    if not candidates:
+        return jsonify({
+            "polygon": [],
+            "area_m2": 0,
+            "contour_count": len(contours),
+            "message": "No suitable building contour found near image center"
+        })
+
+    # Pick the best candidate
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    best_contour = candidates[0][1]
+
+    # ── simplify polygon ──
+    perimeter = cv2.arcLength(best_contour, True)
+    # Epsilon controls simplification: smaller = more detail
+    epsilon = 0.012 * perimeter
+    approx = cv2.approxPolyDP(best_contour, epsilon, True)
+
+    # Convert to list of [x, y] points
+    polygon = approx.reshape(-1, 2).tolist()
+
+    # Calculate area in m²
+    pixel_area = cv2.contourArea(approx)
+    area_m2 = pixel_area * (mpp ** 2)
+
+    return jsonify({
+        "polygon": polygon,
+        "area_m2": round(area_m2, 1),
+        "area_px": round(pixel_area, 1),
+        "contour_count": len(candidates),
+        "vertex_count": len(polygon),
     })
 
 
