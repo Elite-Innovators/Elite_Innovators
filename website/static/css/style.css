@@ -318,11 +318,23 @@ main {
   border:1px solid var(--line-strong);
   border-radius:8px;
   background:var(--ink); display:none; overflow:hidden;
+  cursor: grab;
 }
+.imagery-frame:active { cursor: grabbing; }
 .imagery-frame.show { display:block; }
-.imagery-frame img { width:100%; display:block; }
-.imagery-frame svg {
-  position:absolute; inset:0; width:100%; height:100%;
+.zoom-layer {
+  position:relative; width:100%; transform-origin: 0 0;
+}
+.zoom-layer img { width:100%; display:block; pointer-events:none; }
+.zoom-layer svg {
+  position:absolute; inset:0; width:100%; height:100%; pointer-events:none;
+}
+.zoom-hint {
+  position:absolute; top:8px; right:8px;
+  background:rgba(14,22,32,0.7);
+  font-family:'IBM Plex Mono', monospace; font-size:9px;
+  color:var(--paper-dim); padding:4px 8px; border-radius:4px;
+  pointer-events:none; z-index:10; backdrop-filter:blur(4px);
 }
 
 .roof-outline {

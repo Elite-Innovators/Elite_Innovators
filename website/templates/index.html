@@ -232,9 +232,12 @@
 
       <!-- imagery result -->
       <div class="imagery-frame" id="imageryFrame">
-        <img id="scanImg" alt="Aerial tile">
-        <svg id="overlaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="zoom-layer" id="zoomLayer">
+          <img id="scanImg" alt="Aerial tile">
+          <svg id="overlaySvg" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
         <div class="imagery-caption" id="imageryCaption"></div>
+        <div class="zoom-hint">Scroll to zoom · Click & drag to pan</div>
       </div>
 
       <!-- calculation results -->

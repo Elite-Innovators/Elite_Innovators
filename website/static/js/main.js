@@ -132,6 +132,7 @@
   const runScanBtn   = document.getElementById('runScanBtn');
   const scanStatus   = document.getElementById('scanStatus');
   const imageryFrame = document.getElementById('imageryFrame');
+  const zoomLayer    = document.getElementById('zoomLayer');
   const scanImg      = document.getElementById('scanImg');
   const overlaySvg   = document.getElementById('overlaySvg');
   const imageryCaption = document.getElementById('imageryCaption');
@@ -151,6 +152,47 @@
   });
 
 
+  /* ── zoom and pan logic ── */
+  let scale = 1, panX = 0, panY = 0, isDragging = false, startX, startY;
+
+  function updateZoom() {
+    zoomLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  }
+
+  imageryFrame.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(1, Math.min(scale * zoomAmount, 5));
+    
+    const rect = imageryFrame.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    panX = mx - (mx - panX) * (newScale / scale);
+    panY = my - (my - panY) * (newScale / scale);
+    
+    if (newScale === 1) { panX = 0; panY = 0; }
+    scale = newScale; updateZoom();
+  });
+
+  imageryFrame.addEventListener('mousedown', (e) => {
+    if (scale > 1) {
+      isDragging = true;
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+    updateZoom();
+  });
+
+  window.addEventListener('mouseup', () => isDragging = false);
+
+
   /* ── run scan ── */
   runScanBtn.addEventListener('click', async () => {
     const latInput = document.getElementById('inputLat');
@@ -166,6 +208,7 @@
 
     // reset UI
     imageryFrame.classList.remove('show');
+    scale = 1; panX = 0; panY = 0; updateZoom();
     calcGrid.classList.remove('show');
     calcGrid.innerHTML = '';
     overlaySvg.innerHTML = '';
