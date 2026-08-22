@@ -17,11 +17,16 @@ from datetime import datetime
 
 import base64
 
-from flask import Flask, render_template, request, jsonify
+# Add the current directory to sys.path so imports work on Vercel
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from flask import Flask, render_template, request, jsonify
 from tile_fetcher import get_hires_tile
 
-app = Flask(__name__)
+# Explicitly set paths so Vercel finds templates/static when running from root
+app = Flask(__name__,
+            template_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"),
+            static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "static"))
 
 
 # ═══════════════════════════════════════════════ pages
