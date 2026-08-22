@@ -15,16 +15,13 @@ import sys
 import uuid
 from datetime import datetime
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+import base64
 
-# ── make code1.py importable from the parent directory ──
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from code1 import get_hires_tile  # noqa: E402
+from flask import Flask, render_template, request, jsonify
+
+from tile_fetcher import get_hires_tile
 
 app = Flask(__name__)
-
-SCAN_DIR = os.path.join(app.static_folder, "scans")
-os.makedirs(SCAN_DIR, exist_ok=True)
 
 
 # ═══════════════════════════════════════════════ pages
@@ -69,23 +66,31 @@ def api_scan():
 
     # ── fetch the tile ──
     tile_id = uuid.uuid4().hex[:12]
-    out_path = os.path.join(SCAN_DIR, f"{tile_id}.png")
+    out_path = f"/tmp/{tile_id}.png"
 
     try:
         _, mpp = get_hires_tile(lat, lon, size_m=size_m, zoom=zoom, out=out_path)
     except Exception as exc:
         return jsonify({"error": f"Tile fetch failed: {exc}"}), 502
 
-    # ── image dimensions ──
+    # ── image dimensions and base64 encoding ──
     from PIL import Image
     img = Image.open(out_path)
     w, h = img.size
+    
+    with open(out_path, "rb") as f:
+        img_b64 = base64.b64encode(f.read()).decode("utf-8")
+        
+    try:
+        os.remove(out_path)
+    except Exception:
+        pass
 
     # ── lightweight solar feasibility estimate ──
     calc = _solar_calc(lat, size_m, mpp)
 
     return jsonify({
-        "image_url": f"/static/scans/{tile_id}.png",
+        "image_url": f"data:image/png;base64,{img_b64}",
         "lat": lat,
         "lon": lon,
         "zoom": zoom,
